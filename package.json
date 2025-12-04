@@ -1,0 +1,10 @@
+{
+  "name": "gastosapp-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node backend/src/index.js",
+    "postinstall": "npm --prefix backend ci --omit=dev || npm --prefix backend ci"
+  }
+}
