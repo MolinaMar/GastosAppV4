@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+require('dotenv').config()
 
 const app = express()
 app.use(cors())
@@ -27,7 +28,7 @@ if (MONGODB_URI) {
         apellidoMaterno: { type: String, required: true },
         correo: { type: String, required: true, unique: true },
         passwordHash: { type: String, required: true },
-      }, { timestamps: true, collection: 'users' })
+      }, { timestamps: true, collection: 'usuarios' })
       UserSchema.index({ correo: 1 }, { unique: true })
       User = mongoose.model('User', UserSchema)
       console.log('mongo:connected')
@@ -111,6 +112,15 @@ app.post('/api/auth/login', async (req, res) => {
   const ok = await bcrypt.compare(String(password), user.passwordHash)
   if (!ok) return res.status(401).json({ error: 'invalid_credentials' })
   res.json({ nombre: user.nombre })
+})
+
+app.get('/api/users', async (req, res) => {
+  if (!useMemory) {
+    if (!User) return res.status(503).json({ error: 'db_not_ready' })
+    const list = await User.find().lean()
+    return res.json(list)
+  }
+  res.json(users)
 })
 
 const port = process.env.PORT || 3001
