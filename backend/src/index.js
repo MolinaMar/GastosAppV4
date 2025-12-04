@@ -8,6 +8,7 @@ app.use(cors())
 app.use(express.json())
 
 const MONGODB_URI = process.env.MONGODB_URI
+const useMemory = !MONGODB_URI
 let Expense
 let User
 if (MONGODB_URI) {
@@ -18,7 +19,7 @@ if (MONGODB_URI) {
         title: { type: String, required: true },
         amount: { type: Number, required: true },
         date: { type: Date, default: Date.now },
-      })
+      }, { timestamps: true })
       Expense = mongoose.model('Expense', ExpenseSchema)
       const UserSchema = new mongoose.Schema({
         nombre: { type: String, required: true },
@@ -26,7 +27,8 @@ if (MONGODB_URI) {
         apellidoMaterno: { type: String, required: true },
         correo: { type: String, required: true, unique: true },
         passwordHash: { type: String, required: true },
-      })
+      }, { timestamps: true, collection: 'users' })
+      UserSchema.index({ correo: 1 }, { unique: true })
       User = mongoose.model('User', UserSchema)
       console.log('mongo:connected')
     })
@@ -43,7 +45,8 @@ app.get('/health', (req, res) => {
 })
 
 app.get('/api/expenses', async (req, res) => {
-  if (Expense) {
+  if (!useMemory) {
+    if (!Expense) return res.status(503).json({ error: 'db_not_ready' })
     const list = await Expense.find().lean()
     return res.json(list)
   }
@@ -52,7 +55,8 @@ app.get('/api/expenses', async (req, res) => {
 
 app.post('/api/expenses', async (req, res) => {
   const { title, amount, date } = req.body
-  if (Expense) {
+  if (!useMemory) {
+    if (!Expense) return res.status(503).json({ error: 'db_not_ready' })
     const doc = await Expense.create({ title, amount, date })
     return res.status(201).json(doc)
   }
@@ -63,7 +67,8 @@ app.post('/api/expenses', async (req, res) => {
 
 app.delete('/api/expenses/:id', async (req, res) => {
   const { id } = req.params
-  if (Expense) {
+  if (!useMemory) {
+    if (!Expense) return res.status(503).json({ error: 'db_not_ready' })
     const removed = await Expense.findByIdAndDelete(id)
     if (!removed) return res.status(404).json({ error: 'not_found' })
     return res.json(removed)
@@ -77,7 +82,8 @@ app.delete('/api/expenses/:id', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   const { nombre, apellidoPaterno, apellidoMaterno, correo, password } = req.body
   const passwordHash = await bcrypt.hash(String(password), 10)
-  if (User) {
+  if (!useMemory) {
+    if (!User) return res.status(503).json({ error: 'db_not_ready' })
     const exists = await User.findOne({ correo })
     if (exists) return res.status(409).json({ error: 'email_in_use' })
     const doc = await User.create({ nombre, apellidoPaterno, apellidoMaterno, correo, passwordHash })
@@ -92,7 +98,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   const { correo, password } = req.body
-  if (User) {
+  if (!useMemory) {
+    if (!User) return res.status(503).json({ error: 'db_not_ready' })
     const doc = await User.findOne({ correo })
     if (!doc) return res.status(401).json({ error: 'invalid_credentials' })
     const ok = await bcrypt.compare(String(password), doc.passwordHash)
