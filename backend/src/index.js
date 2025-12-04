@@ -2,7 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
-require('dotenv').config()
+try { require('dotenv').config() } catch (_) {}
 
 const app = express()
 app.use(cors())
